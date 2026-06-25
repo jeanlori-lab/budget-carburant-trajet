@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <link rel="icon" type="image/png" href="logo%20budget%20trajet.png">
+<link rel="icon" type="image/png" href="logo budget trajet.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calculateur coût carburant</title>
@@ -140,8 +140,27 @@
       align-items: center;
       gap: 6px;
     }
-    .conso-wrap input { flex: 1; }
+    .conso-wrap input { flex: 1; min-width: 0; }
     .conso-wrap span { font-size: 13px; color: #607080; white-space: nowrap; }
+    .conso-step {
+      display: inline-flex;
+      width: 34px;
+      height: 34px;
+      border: 1.5px solid #c8e6c9;
+      border-radius: 10px;
+      background: #f1fdf1;
+      color: #1a2433;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .conso-step:active { background: #dff6df; }
+    .conso-wrap input { text-align: center; }
 
     /* Bouton */
     .btn {
@@ -287,8 +306,7 @@
           <option value="sp95">SP95</option>
           <option value="gazole">Gazole (Diesel)</option>
           <option value="sp98">SP98</option>
-          <option value="e10">SP95-E10</option>
-          <option value="e85">E85</option>
+                    <option value="e85">E85</option>
           <option value="gplc">GPLc</option>
         </select>
       </div>
@@ -307,7 +325,9 @@
       <div class="param-label">Conso au 100 km</div>
       <div class="param-input">
         <div class="conso-wrap">
+          <button type="button" class="conso-step" aria-label="Diminuer la consommation" onclick="changerConso(-0.1)">-</button>
           <input type="number" id="conso" value="7.5" min="1" max="30" step="0.1" oninput="resetResultat()">
+          <button type="button" class="conso-step" aria-label="Augmenter la consommation" onclick="changerConso(0.1)">+</button>
           <span>L / 100 km</span>
         </div>
       </div>
@@ -386,17 +406,39 @@ function hideError() { document.getElementById('error').style.display='none'; }
 function setLoading(on) { document.getElementById('loader').style.display=on?'block':'none'; document.getElementById('calcBtn').disabled=on; }
 function resetResultat() { document.getElementById('sectionResultats').style.display='none'; hideError(); }
 
+function changerConso(delta) {
+  const input = document.getElementById('conso');
+  const min = parseFloat(input.min);
+  const max = parseFloat(input.max);
+  const current = parseFloat(input.value) || 0;
+  const next = Math.min(max, Math.max(min, current + delta));
+  input.value = (Math.round(next * 10) / 10).toFixed(1);
+  resetResultat();
+}
+
+async function fetchPrix(field) {
+  const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?select=avg(${field})%20as%20prix&limit=1&where=${field}%20is%20not%20null`;
+  const r = await fetch(url);
+  const d = await r.json();
+  if (d.results && d.results[0] && d.results[0].prix) return parseFloat(d.results[0].prix);
+  return null;
+}
+
 async function chargerPrix() {
   const type = document.getElementById('carburant').value;
-  const field = CARB_FIELD[type];
   document.getElementById('prixAffiche').textContent = 'Chargement…';
   prixActuel = null;
   try {
-    const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?select=avg(${field})%20as%20prix&limit=1&where=${field}%20is%20not%20null`;
-    const r = await fetch(url);
-    const d = await r.json();
-    if (d.results && d.results[0] && d.results[0].prix) {
-      prixActuel = parseFloat(d.results[0].prix);
+    let prix;
+    if (type === 'sp95') {
+      const [p1, p2] = await Promise.all([fetchPrix('sp95_prix'), fetchPrix('e10_prix')]);
+      const valides = [p1, p2].filter(p => p !== null);
+      prix = valides.length ? valides.reduce((a, b) => a + b, 0) / valides.length : null;
+    } else {
+      prix = await fetchPrix(CARB_FIELD[type]);
+    }
+    if (prix !== null) {
+      prixActuel = prix;
       document.getElementById('prixAffiche').textContent = prixActuel.toFixed(3) + ' €/L';
     } else {
       document.getElementById('prixAffiche').textContent = 'Indisponible';
@@ -408,7 +450,7 @@ async function chargerPrix() {
 chargerPrix();
 
 async function geocode(lieu, apiKey) {
-  const url = `https://api.openrouteservice.org/geocode/search?api_key=${apiKey}&text=${encodeURIComponent(lieu)}&boundary.country=FR&size=1`;
+  const url = `https://api.openrouteservice.org/geocode/search?api_key=${apiKey}&text=${encodeURIComponent(lieu)}&size=1`;
   const r = await fetch(url);
   if (!r.ok) throw new Error('Géocodage impossible pour "' + lieu + '"');
   const d = await r.json();
