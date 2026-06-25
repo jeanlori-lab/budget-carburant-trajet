@@ -139,30 +139,8 @@
       align-items: center;
       gap: 6px;
     }
-    .conso-wrap input { flex: 1; min-width: 0; }
+    .conso-wrap input { flex: 1; }
     .conso-wrap span { font-size: 13px; color: #607080; white-space: nowrap; }
-    .conso-step {
-      display: none;
-      width: 32px;
-      height: 32px;
-      border: 1.5px solid #c8e6c9;
-      border-radius: 10px;
-      background: #f1fdf1;
-      color: #1a2433;
-      font-size: 18px;
-      font-weight: 700;
-      line-height: 1;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .conso-step:active { background: #dff6df; }
-
-    @media (max-width: 640px), (pointer: coarse) {
-      .conso-step { display: inline-flex; }
-      .conso-wrap input { text-align: center; }
-    }
 
     /* Bouton */
     .btn {
@@ -328,9 +306,7 @@
       <div class="param-label">Conso au 100 km</div>
       <div class="param-input">
         <div class="conso-wrap">
-          <button type="button" class="conso-step" aria-label="Diminuer la consommation" onclick="changerConso(-0.1)">-</button>
           <input type="number" id="conso" value="7.5" min="1" max="30" step="0.1" oninput="resetResultat()">
-          <button type="button" class="conso-step" aria-label="Augmenter la consommation" onclick="changerConso(0.1)">+</button>
           <span>L / 100 km</span>
         </div>
       </div>
@@ -408,16 +384,6 @@ function showError(msg) { const e=document.getElementById('error'); e.textConten
 function hideError() { document.getElementById('error').style.display='none'; }
 function setLoading(on) { document.getElementById('loader').style.display=on?'block':'none'; document.getElementById('calcBtn').disabled=on; }
 function resetResultat() { document.getElementById('sectionResultats').style.display='none'; hideError(); }
-
-function changerConso(delta) {
-  const input = document.getElementById('conso');
-  const min = parseFloat(input.min);
-  const max = parseFloat(input.max);
-  const current = parseFloat(input.value) || 0;
-  const next = Math.min(max, Math.max(min, current + delta));
-  input.value = (Math.round(next * 10) / 10).toFixed(1);
-  resetResultat();
-}
 
 async function chargerPrix() {
   const type = document.getElementById('carburant').value;
