@@ -453,23 +453,30 @@ async function onAutoComplete(input, listId) {
   clearTimeout(autoTimers[listId]);
   if (val.length < 3) { list.style.display = 'none'; return; }
   autoTimers[listId] = setTimeout(async () => {
-    const apiKey = document.getElementById('apiKey').value.trim();
-    const texteGeo = (val.split(/\s+/).length === 1 && !/\d/.test(val)) ? val + ', France' : val;
     try {
-      const url = `https://api.openrouteservice.org/geocode/search?api_key=${apiKey}&text=${encodeURIComponent(texteGeo)}&size=5`;
-      const r = await fetch(url);
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&accept-language=fr&addressdetails=1`;
+      const r = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
       if (!r.ok) return;
       const d = await r.json();
-      if (!d.features || d.features.length === 0) { list.style.display = 'none'; return; }
+      if (!d || d.length === 0) { list.style.display = 'none'; return; }
       list.innerHTML = '';
-      d.features.forEach(f => {
-        const label = f.properties.label;
+      d.forEach(item => {
+        const label = item.display_name;
+        const lat = parseFloat(item.lat);
+        const lng = parseFloat(item.lon);
         const div = document.createElement('div');
         div.className = 'autocomplete-item';
-        div.innerHTML = '📍 ' + label;
+        // Nom court : ville + pays
+        const parts = label.split(',');
+        const court = parts.slice(0, 3).join(',').trim();
+        div.innerHTML = '📍 ' + court;
+        div.title = label;
         div.addEventListener('mousedown', e => {
           e.preventDefault();
-          input.value = label;
+          input.value = court;
+          // Stocker les coords pour éviter un 2e géocodage
+          input.dataset.lat = lat;
+          input.dataset.lng = lng;
           list.style.display = 'none';
           resetResultat();
         });
@@ -477,7 +484,7 @@ async function onAutoComplete(input, listId) {
       });
       list.style.display = 'block';
     } catch(e) { list.style.display = 'none'; }
-  }, 300);
+  }, 400);
 }
 
 function onAutoKey(event, listId) {
@@ -561,6 +568,12 @@ function parseGPS(texte) {
 async function geocode(lieu, apiKey) {
   const gps = parseGPS(lieu);
   if (gps) return gps;
+  // Utiliser les coords stockées par l'autocomplétion si disponibles
+  const inputEl = document.querySelector(`input[value="${lieu}"]`) ||
+    (['depart','arrivee'].map(id => document.getElementById(id)).find(el => el && el.value === lieu));
+  if (inputEl && inputEl.dataset.lat && inputEl.dataset.lng) {
+    return [parseFloat(inputEl.dataset.lng), parseFloat(inputEl.dataset.lat)];
+  }
   // layers=locality,address force un point accessible en voiture
   // Si un seul mot sans chiffre ni virgule, on ajoute France pour mieux géocoder
   const texteGeo = (lieu.trim().split(/\s+/).length === 1 && !/\d/.test(lieu)) ? lieu + ', France' : lieu;
