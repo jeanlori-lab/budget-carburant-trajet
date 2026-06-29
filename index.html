@@ -140,7 +140,7 @@
       align-items: center;
       gap: 6px;
     }
-    .conso-wrap input { flex: 1; min-width: 0; }
+    .conso-wrap input { width: 70px; min-width: 0; flex: none; }
     .conso-wrap span { font-size: 13px; color: #607080; white-space: nowrap; }
     .conso-step {
       display: inline-flex;
@@ -390,9 +390,7 @@
       <div class="param-label">Conso au 100 km</div>
       <div class="param-input">
         <div class="conso-wrap">
-          <button type="button" class="conso-step" aria-label="Diminuer la consommation" onclick="changerConso(-0.1)">-</button>
           <input type="number" id="conso" value="7.5" min="1" max="30" step="0.1" oninput="resetResultat()">
-          <button type="button" class="conso-step" aria-label="Augmenter la consommation" onclick="changerConso(0.1)">+</button>
           <span>L / 100 km</span>
         </div>
       </div>
