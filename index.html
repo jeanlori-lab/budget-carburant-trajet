@@ -4,17 +4,20 @@
 <link rel="icon" type="image/png" href="logo budget trajet.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Calculateur coût carburant</title>
+  <title>Copilote budget</title>
   <!-- Aperçu lors du partage du lien (Open Graph + Twitter) -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Coût carburant trajet">
-  <meta property="og:description" content="Calculateur de coût carburant pour un trajet, prix mis à jour en temps réel.">
+  <meta property="og:title" content="Copilote budget">
+  <meta property="og:description" content="Calculateur de coût carburant pour un trajet : carburant, litres consommés, coût total, et la station la moins chère près du départ.">
   <meta property="og:image" content="https://jeanlori-lab.github.io/budget-carburant-trajet/logo%20budget%20trajet.png">
   <meta property="og:url" content="https://jeanlori-lab.github.io/budget-carburant-trajet/">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Coût carburant trajet">
-  <meta name="twitter:description" content="Calculateur de coût carburant pour un trajet, prix mis à jour en temps réel.">
+  <meta name="twitter:title" content="Copilote budget">
+  <meta name="twitter:description" content="Calculateur de coût carburant pour un trajet : carburant, litres consommés, coût total, et la station la moins chère près du départ.">
   <meta name="twitter:image" content="https://jeanlori-lab.github.io/budget-carburant-trajet/logo%20budget%20trajet.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -37,16 +40,18 @@
       margin-bottom: 20px;
     }
     .header h1 {
-      font-size: 22px;
-      font-weight: 700;
+      font-family: 'Fredoka', 'Segoe UI', sans-serif;
+      font-size: 30px;
+      font-weight: 600;
       color: #1a2433;
-      letter-spacing: -0.02em;
+      letter-spacing: 0;
     }
     .header p {
-      font-size: 12px;
+      font-size: 13px;
       color: #607080;
       margin-top: 5px;
       line-height: 1.5;
+      padding: 0 12px;
     }
 
     /* Carte */
@@ -93,19 +98,31 @@
       position: relative;
     }
     .param-row:last-child { border-bottom: none; }
-
+    .point-row { border-bottom: none; }
+    /* Séparations plus marquées entre Carburant / Consommation / Passagers : plus
+       d'espace vertical et un trait un peu plus visible et plus long. */
+    .carburant-row, .conso-row, .passagers-row { padding: 15px 0; border-bottom-color: #cfd8e0; border-bottom-width: 1.5px; }
+    /* Resserre le bloc en haut et en bas (garde l'espacement entre les 3 lignes). */
+    .carburant-row { padding-top: 8px; }
+    .passagers-row { padding-bottom: 8px; }
+    /* Séparation un peu plus marquée entre le bloc Carburant/Conso et Départ/Destination */
+    /* Plus d'air autour du trait pour bien détacher les deux blocs */
     .param-icon {
       font-size: 16px;
       width: 22px;
       text-align: center;
       flex-shrink: 0;
+      line-height: 1;
+      transform: translateY(-2px);
     }
     .param-label {
-      font-size: 13px;
+      font-size: 15px;
+      font-weight: 600;
       color: #455060;
-      width: 130px;
+      width: 94px;
       flex-shrink: 0;
-      line-height: 1.3;
+      line-height: 1.2;
+      text-align: left;
     }
     .param-input {
       flex: 1;
@@ -146,45 +163,193 @@
       color: #607080;
     }
 
-    .conso-wrap {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    /* Prix moyen actuel : une ligne, alignée avec le champ Carburant */
+    .prix-actuel {
+      margin-top: 6px;
+      padding-left: 2px;
+      font-size: 12px;
+      color: #607080;
+      white-space: nowrap;
     }
-    .conso-wrap input { width: 70px; min-width: 0; flex: none; }
-    .conso-wrap span { font-size: 13px; color: #607080; white-space: nowrap; }
-    .conso-step {
-      display: inline-flex;
-      width: 34px;
-      height: 34px;
+    .prix-actuel #prixAffiche {
+      font-weight: 700;
+      color: #2e7d32;
+    }
+    /* La ligne de prix est sortie du flux (position absolue) : ainsi l'icône, le
+       mot « Carburant » et la liste déroulante restent centrés ensemble. */
+    /* Trait séparateur entre le bloc Départ/Destination (au-dessus) et Carburant/Conso */
+    /* Panneaux teintés : un pour Départ/Destination, un pour Carburant/Conso */
+    .section {
+      background: #f5f8fb;
+      border: 1px solid #eef2f6;
+      border-radius: 14px;
+      padding: 4px 14px;
+      margin-bottom: 12px;
+    }
+    .carburant-row { padding-bottom: 26px; }
+    .carburant-row .param-input { position: relative; }
+    .carburant-row .prix-actuel {
+      position: absolute;
+      top: calc(100% + 5px);
+      left: 2px;
+      margin: 0;
+    }
+
+    /* Règle + valeur sur une seule ligne (valeur à droite) */
+    .conso-line { display: flex; align-items: center; gap: 6px; justify-content: center; }
+    .conso-line .conso-roulette { flex: 1; }
+    .conso-value {
+      flex-shrink: 0;
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 4px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .conso-value .roulette-unit { font-size: 10px; font-weight: 600; color: #607080; }
+    /* Sur ordinateur, la valeur devient un champ éditable au clic (pas d'encadré
+       visible, juste un très léger fond au focus pour indiquer qu'on peut taper). */
+    #consoVal.conso-val-input {
+      width: 4ch;
+      padding: 1px 2px;
+      border: none;
+      border-radius: 5px;
+      background: transparent;
+      font-family: inherit;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1b5e20;
+      text-align: center;
+      outline: none;
+      box-shadow: none;
+      cursor: text;
+    }
+    #consoVal.conso-val-input:focus {
+      background: rgba(46,125,50,0.06);
+      box-shadow: none;
+    }
+    #consoVal.conso-val-input[readonly] { cursor: default; }
+
+    /* Desktop : flèches +/- de part et d'autre de la valeur, au lieu de la règle */
+    .conso-arrow, .pass-arrow {
+      width: 32px; height: 32px;
+      flex-shrink: 0;
       border: 1.5px solid #c8e6c9;
       border-radius: 10px;
-      background: #f1fdf1;
-      color: #1a2433;
-      font-size: 20px;
+      background: linear-gradient(#fbfffb, #eef9ee);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+      color: #2e7d32;
+      font-size: 17px;
       font-weight: 700;
       line-height: 1;
       cursor: pointer;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .conso-arrow:hover, .pass-arrow:hover { background: #e3f5e4; }
+    .conso-arrow:active, .pass-arrow:active { transform: scale(0.9); }
+
+    /* Nombre de passagers : compteur +/-, même style que la consommation. */
+    .passagers-line { display: flex; align-items: center; justify-content: center; gap: 12px; }
+    .passagers-value { font-size: 18px; font-weight: 600; color: #1b5e20; min-width: 1.5ch; text-align: center; }
+
+    /* Règle / roulette de consommation (glisser horizontal, souris + doigt) */
+    .conso-roulette {
+      position: relative;
+      width: 100%;
+      height: 32px;
+      border: 1.5px solid #c8e6c9;
+      border-radius: 10px;
+      background: linear-gradient(#fbfffb, #eef9ee);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+      overflow: hidden;
+      cursor: grab;
+      touch-action: none;
       user-select: none;
     }
-    .conso-step:active { background: #dff6df; }
-    .conso-wrap input { text-align: center; }
-    @media (pointer: coarse) {
-      .conso-step { display: none; }
+    /* Fenêtre masquée : effet « tambour » (les graduations s'estompent sur les bords) */
+    .roulette-viewport {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 13%, #000 87%, transparent 100%);
+      mask-image: linear-gradient(90deg, transparent 0, #000 13%, #000 87%, transparent 100%);
     }
+    .conso-roulette:active { cursor: grabbing; }
+    /* Sur ordinateur : les flèches remplacent la règle (visible seulement sur mobile). */
+    .conso-line .conso-roulette { display: none; }
+    .roulette-track {
+      position: absolute;
+      top: 0; left: 0; height: 100%;
+      width: 4000px;
+      /* graduations fines tous les 0,1 (6px) */
+      background-image: repeating-linear-gradient(90deg, #bcdcc0 0, #bcdcc0 1px, transparent 1px, transparent 6px);
+      background-repeat: repeat-x;
+      background-position: 0 100%;
+      background-size: 6px 7px;
+    }
+    .rt-major {
+      position: absolute;
+      bottom: 0;
+      width: 0; height: 100%;
+    }
+    .rt-major::before { /* graduation majeure (entier) */
+      content: '';
+      position: absolute;
+      left: 0; bottom: 0;
+      width: 1.5px; height: 11px;
+      background: #7fae84;
+      transform: translateX(-50%);
+    }
+    .rt-major span {
+      position: absolute;
+      bottom: 12px; left: 0;
+      transform: translateX(-50%);
+      font-size: 9px;
+      color: #6f8a72;
+    }
+    .roulette-center {
+      position: absolute;
+      left: 50%; top: 0; bottom: 0;
+      width: 2px;
+      background: #2e7d32;
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .roulette-center::before, .roulette-center::after {
+      content: '';
+      position: absolute;
+      left: 50%; transform: translateX(-50%);
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+    }
+    .roulette-center::before { top: -1px; border-top: 5px solid #2e7d32; }
+    .roulette-center::after { bottom: -1px; border-bottom: 5px solid #2e7d32; }
     @media (max-width: 768px) {
       input[type="text"], input[type="number"], select { font-size: 16px; }
     }
 
     @media (max-width: 480px) {
-      .param-label { width: 90px; font-size: 12px; }
-      .param-icon { width: 22px; font-size: 15px; }
-      input[type="text"], input[type="number"], select { font-size: 12px; padding: 7px 8px; }
-      .auto-field { font-size: 12px; padding: 7px 8px; }
-
+      /* Mobile : le libellé passe au-dessus, l'encadré prend toute la largeur */
+      .card { padding: 16px; }
+      .section { padding: 6px 12px; }
+      .param-row { flex-wrap: wrap; row-gap: 7px; }
+      .param-label { width: auto; flex: none; font-size: 14px; }
+      .param-input { flex: 1 0 100%; }
+      /* Étapes : pas de ligne de libellé (numéro en placeholder), encadré + ✕ sur une ligne */
+      .is-stop .param-label { display: none; }
+      .is-stop .param-input { flex: 1 1 auto; }
+      /* Recentre les flèches pile entre les deux encadrés (layout empilé) */
+      #swapBtn { transform: translateY(calc(-50% + 11px)); }
+      #swapBtn:active { transform: translateY(calc(-50% + 11px)) scale(0.9); }
+      .param-icon { width: 20px; font-size: 15px; }
+      input[type="text"], input[type="number"], select { font-size: 15px; padding: 9px 11px; }
+      /* Mobile : on garde la règle glissable, les flèches disparaissent. */
+      .conso-line .conso-roulette { display: block; }
+      .conso-arrow { display: none; }
+      .conso-value { width: 92px; }
     }
 
     /* Autocomplete */
@@ -218,40 +383,49 @@
     .itinerary-controls {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 6px 0 2px;
+      padding: 0 0 2px;
+      margin-top: -6px;
     }
     .link-btn {
       background: none;
       border: none;
       color: #1976d2;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
       padding: 4px 0;
     }
     .link-btn:hover { text-decoration: underline; }
-    /* Bouton d'inversion : à droite, centré entre départ et destination, discret */
     .points-wrap { position: relative; }
-    .points-wrap.has-swap #points { padding-right: 36px; }
+
+    /* Flèches d'inversion : à droite, chevauchent le coin des encadrés, discrètes */
     .swap-btn {
       position: absolute;
-      right: 0;
+      right: -10px; /* centré sur le bord droit des encadrés (carré à cheval) */
       top: 50%;
       transform: translateY(-50%);
-      width: 30px; height: 30px;
+      width: 24px; height: 24px;
+      padding: 0;
       border: 1px solid #e3e9ef;
-      border-radius: 8px;
+      border-radius: 7px;
       background: #fff;
       color: #9aa7b4;
-      font-size: 15px;
+      font-size: 14px;
       line-height: 1;
       cursor: pointer;
       display: none;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s, transform 0.1s;
     }
-    .swap-btn:hover { background: #f5f7fa; color: #607080; }
+    .swap-btn:hover { background: #eef4fb; color: #1976d2; border-color: #cfe0f3; box-shadow: 0 0 0 3px rgba(33,150,243,0.10); }
+    .swap-btn:active { transform: translateY(-50%) scale(0.9); }
+    /* Effet sympa : survoler les flèches éclaire les deux encadrés */
+    .points-wrap:has(.swap-btn:hover) .point-input {
+      border-color: #93b8e6;
+      box-shadow: 0 0 0 3px rgba(33,150,243,0.12);
+    }
     .stop-remove {
       width: 26px; height: 26px;
       border: none;
@@ -262,6 +436,53 @@
       flex-shrink: 0;
     }
     .stop-remove:hover { color: #8e0000; }
+
+    /* Étoile favori : superposée dans l'encadré (départ/destination/étape), pour
+       rester à droite du champ quel que soit le retour à la ligne en mobile. */
+    .point-row .param-input { position: relative; }
+    .autocomplete-wrap .point-input { padding-right: 34px; }
+    .fav-star {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px; height: 24px;
+      padding: 0;
+      border: none;
+      background: none;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      color: #b6c0cb;
+      z-index: 3;
+      transition: color 0.15s, transform 0.1s;
+    }
+    .fav-star:hover { color: #f0c419; }
+    .fav-star.active { color: #ffc107; }
+    .fav-star:active { transform: translateY(-50%) scale(0.85); }
+
+    /* Petit texte d'info qui apparaît brièvement quand on enregistre un favori. */
+    .fav-hint {
+      position: absolute;
+      right: 0;
+      top: 100%;
+      margin-top: 4px;
+      background: #1a2433;
+      color: #fff;
+      font-size: 11px;
+      line-height: 1.3;
+      padding: 6px 10px;
+      border-radius: 8px;
+      max-width: 220px;
+      text-align: center;
+      z-index: 20;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+    .fav-hint.show { opacity: 1; transform: translateY(0); }
+
     /* Poignée sortie du flux : centrée dans la marge à gauche de l'emoji. */
     .drag-handle {
       position: absolute;
@@ -276,9 +497,21 @@
       font-size: 15px;
       touch-action: none;
       user-select: none;
+      transition: color 0.15s, transform 0.1s;
     }
-    .drag-handle:active { cursor: grabbing; }
-    .point-row.dragging { opacity: 0.65; background: #eef4fb; border-radius: 8px; }
+    .drag-handle:hover { color: #7f97ac; }
+    .drag-handle:active { cursor: grabbing; transform: scale(1.15); }
+    /* Étape attrapée : léger soulèvement (ombre + agrandissement) ; suit le doigt */
+    .point-row.dragging {
+      opacity: 0.95;
+      background: #f4f9ff;
+      border-radius: 10px;
+      box-shadow: 0 6px 16px rgba(33,150,243,0.18);
+      z-index: 5;
+      transition: box-shadow 0.15s ease;
+    }
+    /* Les autres étapes glissent doucement à leur nouvelle place (animation FLIP) */
+    .point-row.sliding { transition: transform 0.18s ease; }
 
     /* Bouton */
     .btn {
@@ -363,6 +596,36 @@
     .res-table thead th:nth-child(2) { color: #1976d2; }
     .res-table thead th:nth-child(3) { color: #2e7d32; }
 
+    /* Ligne total */
+    .total-row td { font-weight: 700 !important; font-size: 14px !important; }
+    .total-row td:nth-child(2) { background: #d0e8ff !important; color: #1565c0 !important; }
+    .total-row td:nth-child(3) { background: #c8f0d8 !important; color: #1b5e20 !important; }
+
+    /* Ligne Coût total isolée : bords arrondis (haut + bas) */
+    .total-standalone td:first-child { border-radius: 10px 0 0 10px; }
+    .total-standalone td:nth-child(3) { border-radius: 0 10px 10px 0; }
+
+    /* Coût par personne (partage de frais) : sous-ligne discrète dans la même
+       cellule que le total, plutôt qu'une ligne séparée. */
+    .total-standalone td { position: relative; }
+    .total-standalone td.has-per-person { padding-bottom: 22px; }
+    .per-person-note {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: 5px;
+      line-height: 1;
+      font-size: 10px;
+      font-weight: 600;
+      opacity: 0.75;
+    }
+
+    /* Mini espace pour détacher la ligne « Coût total » du bloc Carburant */
+    .res-table tr.total-spacer td {
+      background: none;
+      padding: 0;
+      height: 6px;
+    }
+
     /* Sous-blocs résultats */
     .res-table tr.group-header td {
       background: none;
@@ -385,13 +648,55 @@
 
     /* Contours subtils pour séparer visuellement les blocs Trajet et Coût & conso.
        Bordure continue autour de chaque ligne (pas de trait vertical interne). */
-    .res-table tr.group-row td { border-top: 1px solid #dbe3ec; border-bottom: 1px solid #dbe3ec; }
-    .res-table tr.group-row td:first-child { border-left: 1px solid #dbe3ec; }
-    .res-table tr.group-row td:nth-child(3) { border-right: 1px solid #dbe3ec; }
+    .res-table tr.group-row td,
+    .res-table tr.total-standalone td { border-top: 1px solid #dbe3ec; border-bottom: 1px solid #dbe3ec; }
+    .res-table tr.group-row td:first-child,
+    .res-table tr.total-standalone td:first-child { border-left: 1px solid #dbe3ec; }
+    .res-table tr.group-row td:nth-child(3),
+    .res-table tr.total-standalone td:nth-child(3) { border-right: 1px solid #dbe3ec; }
+
+    .cheapest-note {
+      text-align: left;
+      background: #f5f8fb;
+      border: 1px solid #eef2f6;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-top: 16px;
+    }
+    .cheapest-header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 4px;
+    }
+    .cheapest-icon { flex-shrink: 0; font-size: 14px; line-height: 1; }
+    .cheapest-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #455060;
+      line-height: 1;
+    }
+    .cheapest-detail { font-size: 13px; color: #455060; line-height: 1.4; }
+    .cheapest-detail strong { color: #2e7d32; font-size: 15px; }
+    .cheapest-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #1976d2;
+      text-decoration: none;
+      background: #e8f4ff;
+      padding: 5px 12px;
+      border-radius: 14px;
+      transition: background 0.15s;
+    }
+    .cheapest-link:hover { background: #bbdefb; }
 
     .maps-wrap {
       text-align: center;
-      padding-top: 14px;
+      padding-top: 22px;
     }
     .maps-link {
       display: inline-flex;
@@ -428,22 +733,33 @@
 <div class="page">
 
   <div class="header">
-    <h1>Coût carburant trajet</h1>
-    <p>Prix mis à jour en temps réel depuis les données publiques officielles de l'État.</p>
+    <h1>Copilote budget</h1>
+    <p>Entrez les paramètres de votre trajet, on s'occupe des calculs : carburant, litres consommés, coût total. Et en bonus : on vous trouve la station la moins chère et la plus proche de votre départ !</p>
   </div>
 
   <input type="hidden" id="apiKey" value="eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImY1NjRiM2M4Yjc0OTQ0ZDlhNmNjM2FiOWQzNjFhNTE2IiwiaCI6Im11cm11cjY0In0=">
-
-  <!-- Légende -->
-  <div class="card" style="padding: 12px 20px;">
-    <div class="legende"><div class="legend-dot"></div> Cases vertes = à remplir</div>
-  </div>
 
   <!-- Paramètres -->
   <div class="card">
     <div class="card-title">Paramètres du trajet</div>
 
-    <div class="param-row">
+    <!-- Bloc Départ / Destination -->
+    <div class="section">
+      <!-- Points du trajet (départ, étapes, destination) — réordonnables -->
+      <div class="points-wrap">
+        <div id="points"></div>
+        <!-- Inverser départ ↔ destination (visible seulement sans étape) -->
+        <button type="button" class="swap-btn" id="swapBtn" onclick="swapItinerary()" title="Inverser départ et destination" aria-label="Inverser départ et destination">⇅</button>
+      </div>
+
+      <div class="itinerary-controls">
+        <button type="button" class="link-btn" onclick="addPoint()">➕ Ajouter une étape</button>
+      </div>
+    </div>
+
+    <!-- Bloc Carburant / Consommation -->
+    <div class="section">
+    <div class="param-row carburant-row">
       <div class="param-icon">⛽</div>
       <div class="param-label">Carburant</div>
       <div class="param-input">
@@ -454,39 +770,48 @@
           <option value="e85">Superéthanol E85</option>
           <option value="gplc">GPLc</option>
         </select>
-      </div>
-    </div>
-
-    <div class="param-row">
-      <div class="param-icon">💶</div>
-      <div class="param-label">Prix moyen actuel</div>
-      <div class="param-input">
-        <div class="auto-field" id="prixAffiche">Chargement…</div>
+        <div class="prix-actuel">Prix moyen actuel : <span id="prixAffiche">Chargement…</span></div>
       </div>
     </div>
 
     <div class="param-row conso-row">
       <div class="param-icon">🚗</div>
-      <div class="param-label">Conso au 100 km</div>
+      <div class="param-label">Consommation</div>
       <div class="param-input">
-        <div class="conso-wrap">
-          <input type="number" id="conso" value="7.5" min="1" max="30" step="0.1" oninput="resetResultat()">
-          <span>L / 100 km</span>
+        <input type="hidden" id="conso" value="7.5">
+        <div class="conso-line">
+          <div class="conso-roulette" id="consoRoulette" role="slider" aria-label="Consommation au 100 km" aria-valuemin="1" aria-valuemax="30" tabindex="0">
+            <div class="roulette-viewport"><div class="roulette-track" id="rouletteTrack"></div></div>
+            <div class="roulette-center"></div>
+          </div>
+          <button type="button" class="conso-arrow" id="consoMinus" aria-label="Diminuer la consommation">−</button>
+          <div class="conso-value"><input type="text" id="consoVal" class="conso-val-input" value="7,5" inputmode="decimal" readonly aria-label="Consommation au 100 km, modifiable"> <span class="roulette-unit">L / 100 km</span></div>
+          <button type="button" class="conso-arrow" id="consoPlus" aria-label="Augmenter la consommation">+</button>
         </div>
       </div>
     </div>
 
-    <!-- Points du trajet (départ, étapes, destination) — réordonnables -->
-    <div class="points-wrap">
-      <div id="points"></div>
-      <!-- Inverser départ ↔ destination (visible seulement sans étape) -->
-      <button type="button" class="swap-btn" id="swapBtn" onclick="swapItinerary()" title="Inverser départ et destination">⇅</button>
+    <div class="param-row passagers-row">
+      <div class="param-icon">👥</div>
+      <div class="param-label">Passagers</div>
+      <div class="param-input">
+        <input type="hidden" id="passagers" value="1">
+        <div class="passagers-line">
+          <button type="button" class="pass-arrow" id="passMinus" aria-label="Moins de passagers">−</button>
+          <div class="passagers-value"><span id="passagersVal">1</span></div>
+          <button type="button" class="pass-arrow" id="passPlus" aria-label="Plus de passagers">+</button>
+        </div>
+      </div>
     </div>
-
-    <div class="itinerary-controls">
-      <button type="button" class="link-btn" onclick="addPoint()">➕ Ajouter une étape</button>
     </div>
   </div>
+
+  <!-- Astuce retour haptique iOS 17.4+ (switch natif caché) : l'élément garde sa
+       taille normale de rendu (pas de clip 1px, pas de display:none) et reste dans
+       le viewport, juste rendu quasi invisible par l'opacité et repoussé derrière
+       le contenu — pour que WebKit instancie réellement le contrôle natif. -->
+  <input type="checkbox" switch id="hapticSwitch" tabindex="-1" aria-hidden="true"
+    style="position:fixed; top:0; left:0; opacity:0.01; pointer-events:none; z-index:-1;">
 
   <button class="btn" id="calcBtn" onclick="calculer()">Calculer le coût du trajet</button>
   <div class="loader" id="loader">⏳ Calcul en cours…</div>
@@ -530,15 +855,24 @@
           <td id="r-litres-a">—</td>
           <td id="r-litres-ar">—</td>
         </tr>
+        <tr class="total-spacer"><td colspan="3"></td></tr>
+        <tr class="total-row total-standalone">
+          <td><strong>Coût total</strong></td>
+          <td id="r-total-a">—</td>
+          <td id="r-total-ar">—</td>
+        </tr>
       </tbody>
     </table>
+    <div class="cheapest-note" id="cheapestNote" style="display:none;"></div>
     <div class="maps-wrap" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-    <a class="maps-link" id="mapsLink" href="#" target="_blank">
-        <img src="logo maps.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;">
+    <a class="maps-link" id="mapsLink" href="#" target="_blank"
+       style="width:220px !important;height:38px;display:flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;">
+        <img src="logo maps.png" alt="" style="width:18px;height:18px;object-fit:contain;">
         Voir l'itinéraire sur Maps
     </a>
-
-    <a class="maps-link" id="vinciLink" href="#" target="_blank" style="background:#eef7ee;color:#2e7d32;">
+    <a class="maps-link" id="vinciLink" href="#" target="_blank"
+       style="width:220px !important;height:38px;display:flex;align-items:center;justify-content:center;gap:8px;background:#eef7ee;color:#2e7d32;box-sizing:border-box;">
+        <img src="logo prix peages.png" alt="" style="width:18px;height:18px;object-fit:contain;">
         Voir le prix des péages
     </a>
 </div>
@@ -549,7 +883,106 @@
 // Autocomplétion
 const autoTimers = new WeakMap();
 
-// Autocomplétion d'adresses pour un champ donné (suggestions ORS, biais France).
+// Place les résultats français en tête (tri stable : l'ordre de pertinence
+// est conservé à l'intérieur de chaque groupe).
+function frenchFirst(features) {
+  return features.slice().sort((a, b) => {
+    const fa = (a.properties && a.properties.country_a === 'FRA') ? 0 : 1;
+    const fb = (b.properties && b.properties.country_a === 'FRA') ? 0 : 1;
+    return fa - fb;
+  });
+}
+
+// Trajets limités au continent européen : on écarte les résultats de géocodage
+// hors Europe (Asie, États-Unis, îles lointaines…) pour simplifier les choix.
+const EUROPE_COUNTRIES = new Set([
+  'ALA','ALB','AND','AUT','BEL','BGR','BIH','BLR','CHE','CYP','CZE','DEU','DNK',
+  'ESP','EST','FIN','FRA','FRO','GBR','GGY','GIB','GRC','HRV','HUN','IMN','IRL',
+  'ISL','ITA','JEY','LIE','LTU','LUX','LVA','MCO','MDA','MKD','MLT','MNE','NLD',
+  'NOR','POL','PRT','ROU','SMR','SRB','SVK','SVN','SWE','UKR','VAT','XKX',
+]);
+function isEurope(feature) {
+  const cc = feature.properties && feature.properties.country_a;
+  return EUROPE_COUNTRIES.has(cc);
+}
+
+// --- Lieux favoris (départ/destination/étapes) : mémorisés dans le navigateur,
+// proposés en premier dans l'autocomplétion avant même d'avoir tapé un caractère.
+const FAV_PLACES_KEY = 'favPlaces';
+const FAV_PLACES_MAX = 30;
+function getFavPlaces() {
+  try { return JSON.parse(localStorage.getItem(FAV_PLACES_KEY) || '[]'); } catch (e) { return []; }
+}
+function setFavPlaces(arr) {
+  try { localStorage.setItem(FAV_PLACES_KEY, JSON.stringify(arr)); } catch (e) {}
+}
+function isFavPlace(text) {
+  const key = text.trim().toLowerCase();
+  if (!key) return false;
+  return getFavPlaces().some(f => f.trim().toLowerCase() === key);
+}
+function updateStarUI(star, active) {
+  star.classList.toggle('active', active);
+  star.textContent = active ? '★' : '☆';
+  star.title = active ? 'Retirer des favoris' : 'Enregistrer en favori';
+}
+function syncStarForInput(input) {
+  const row = input.closest('.point-row');
+  const star = row && row.querySelector('.fav-star');
+  if (star) updateStarUI(star, isFavPlace(input.value));
+}
+function showFavHint(star) {
+  const row = star.closest('.point-row');
+  if (!row) return;
+  const hint = document.createElement('div');
+  hint.className = 'fav-hint';
+  hint.textContent = 'Enregistré ! Retrouvez vos favoris en cliquant dans un champ vide.';
+  row.appendChild(hint);
+  requestAnimationFrame(() => hint.classList.add('show'));
+  setTimeout(() => {
+    hint.classList.remove('show');
+    setTimeout(() => hint.remove(), 250);
+  }, 2600);
+}
+function toggleFavPlace(text, star) {
+  const val = text.trim();
+  if (!val) return;
+  const key = val.toLowerCase();
+  let favs = getFavPlaces();
+  const idx = favs.findIndex(f => f.trim().toLowerCase() === key);
+  let added;
+  if (idx >= 0) { favs.splice(idx, 1); added = false; }
+  else { favs = [val, ...favs].slice(0, FAV_PLACES_MAX); added = true; }
+  setFavPlaces(favs);
+  updateStarUI(star, added);
+  if (added) showFavHint(star);
+}
+// Propose les favoris dans la liste de suggestions quand le champ est vide et
+// prend le focus (avant même d'avoir tapé un caractère).
+function showFavoritesIfEmpty(input) {
+  if (input.value.trim().length > 0) return;
+  const list = input.parentElement.querySelector('.autocomplete-list');
+  if (!list) return;
+  const favs = getFavPlaces();
+  if (!favs.length) return;
+  list.innerHTML = '';
+  favs.slice(0, 6).forEach(label => {
+    const div = document.createElement('div');
+    div.className = 'autocomplete-item';
+    div.textContent = '★ ' + label;
+    div.addEventListener('mousedown', e => {
+      e.preventDefault();
+      input.value = label;
+      list.style.display = 'none';
+      resetResultat();
+      syncStarForInput(input);
+    });
+    list.appendChild(div);
+  });
+  list.style.display = 'block';
+}
+
+// Autocomplétion d'adresses pour un champ donné (suggestions ORS, France d'abord).
 async function onAutoComplete(input) {
   const list = input.parentElement.querySelector('.autocomplete-list');
   if (!list) return;
@@ -558,18 +991,19 @@ async function onAutoComplete(input) {
   if (val.length < 3) { list.style.display = 'none'; return; }
   autoTimers.set(input, setTimeout(async () => {
     const apiKey = document.getElementById('apiKey').value.trim();
-    // Pas de « , France » forcé : le biais focus.point (Paris) privilégie déjà
-    // la France pour les homonymes, sans casser les villes étrangères.
+    // Pas de « , France » forcé : on récupère large (villes + adresses) puis on
+    // remonte les résultats français en tête, sans exclure l'étranger.
     const texteGeo = val;
     try {
-      const url = `https://api.openrouteservice.org/geocode/search?api_key=${apiKey}&text=${encodeURIComponent(texteGeo)}&size=5&focus.point.lon=2.3522&focus.point.lat=48.8566`;
+      const url = `https://api.openrouteservice.org/geocode/search?api_key=${apiKey}&text=${encodeURIComponent(texteGeo)}&size=10&focus.point.lon=2.3522&focus.point.lat=48.8566`;
       const r = await fetch(url);
       if (!r.ok) { list.style.display = 'none'; return; }
       const d = await r.json();
       if (!d.features || d.features.length === 0) { list.style.display = 'none'; return; }
       list.innerHTML = '';
       const vus = new Set();
-      d.features.forEach(f => {
+      frenchFirst(d.features.filter(isEurope)).forEach(f => {
+        if (list.children.length >= 6) return; // limite l'affichage
         const label = f.properties.label;
         // Le géocodeur renvoie parfois plusieurs résultats au même libellé : on dédoublonne.
         const cle = label.trim().toLowerCase();
@@ -583,7 +1017,7 @@ async function onAutoComplete(input) {
           input.value = label;
           list.style.display = 'none';
           resetResultat();
-          updateLien();
+          syncStarForInput(input);
         });
         list.appendChild(div);
       });
@@ -611,15 +1045,118 @@ function hideError() { document.getElementById('error').style.display='none'; }
 function setLoading(on) { document.getElementById('loader').style.display=on?'block':'none'; document.getElementById('calcBtn').disabled=on; }
 function resetResultat() { document.getElementById('sectionResultats').style.display='none'; hideError(); }
 
-function changerConso(delta) {
-  const input = document.getElementById('conso');
-  const min = parseFloat(input.min);
-  const max = parseFloat(input.max);
-  const current = parseFloat(input.value) || 0;
-  const next = Math.min(max, Math.max(min, current + delta));
-  input.value = (Math.round(next * 10) / 10).toFixed(1);
+// Petit retour haptique (mobile). Android : API Vibration. iOS 17.4+ : astuce
+// du switch caché (Safari ne supporte pas navigator.vibrate).
+let _lastHaptic = 0, _hapticSwitch = null;
+function hapticTick() {
+  const now = Date.now();
+  if (now - _lastHaptic < 20) return; // throttle : évite la surchauffe en drag rapide
+  _lastHaptic = now;
+  if (typeof navigator !== 'undefined' && navigator.vibrate) { navigator.vibrate(3); return; }
+  if (!_hapticSwitch) _hapticSwitch = document.getElementById('hapticSwitch');
+  if (_hapticSwitch) { try { _hapticSwitch.click(); } catch (e) {} }
+}
+
+// --- Roulette de consommation (1 à 30, pas de 0,1) ---
+const CONSO_MIN = 1, CONSO_MAX = 30, CONSO_PPU = 60; // px par L/100km
+function consoValeur() { return parseFloat(document.getElementById('conso').value) || 7.5; }
+function consoSet(v, doReset) {
+  v = Math.min(CONSO_MAX, Math.max(CONSO_MIN, Math.round(v * 10) / 10));
+  document.getElementById('conso').value = v.toFixed(1);
+  const disp = document.getElementById('consoVal');
+  if (disp) disp.value = v.toFixed(1).replace('.', ',');
+  const track = document.getElementById('rouletteTrack');
+  const box = document.getElementById('consoRoulette');
+  if (track && box) {
+    const center = box.clientWidth / 2;
+    track.style.transform = `translateX(${center - (v - 1) * CONSO_PPU}px)`;
+  }
+  const slider = document.getElementById('consoRoulette');
+  if (slider) slider.setAttribute('aria-valuenow', v);
+  if (doReset) resetResultat();
+}
+function consoInit() {
+  const track = document.getElementById('rouletteTrack');
+  const box = document.getElementById('consoRoulette');
+  if (!track || !box) return;
+  // Graduations majeures + numéros (les entiers).
+  let html = '';
+  for (let i = CONSO_MIN; i <= CONSO_MAX; i++) {
+    html += `<div class="rt-major" style="left:${(i - 1) * CONSO_PPU}px"><span>${i}</span></div>`;
+  }
+  track.innerHTML = html;
+
+  let dragging = false, startX = 0, startVal = 7.5;
+  box.addEventListener('pointerdown', e => {
+    dragging = true; startX = e.clientX; startVal = consoValeur();
+    track.style.transition = 'none';
+    box.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  box.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const prev = consoValeur();
+    consoSet(startVal - (e.clientX - startX) / CONSO_PPU, true);
+    if (consoValeur() !== prev) hapticTick(); // petite vibration à chaque cran
+  });
+  const end = () => {
+    if (!dragging) return;
+    dragging = false;
+    track.style.transition = 'transform 0.15s ease-out';
+    consoSet(consoValeur(), true);
+  };
+  box.addEventListener('pointerup', end);
+  box.addEventListener('pointercancel', end);
+  // Clavier (accessibilité).
+  box.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft')  { consoSet(consoValeur() - 0.1, true); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { consoSet(consoValeur() + 0.1, true); e.preventDefault(); }
+  });
+  // Repositionne si la largeur change.
+  window.addEventListener('resize', () => consoSet(consoValeur(), false));
+  consoSet(consoValeur(), false);
+
+  // Flèches (desktop) : mêmes crans que le clavier.
+  const minusBtn = document.getElementById('consoMinus');
+  const plusBtn = document.getElementById('consoPlus');
+  if (minusBtn) minusBtn.addEventListener('click', () => consoSet(consoValeur() - 0.1, true));
+  if (plusBtn) plusBtn.addEventListener('click', () => consoSet(consoValeur() + 0.1, true));
+
+  // Valeur éditable à la main, uniquement sur ordinateur (la règle pilote sur mobile).
+  const valInput = document.getElementById('consoVal');
+  const isDesktop = () => window.matchMedia('(min-width: 481px)').matches;
+  const syncEditable = () => { if (valInput) valInput.readOnly = !isDesktop(); };
+  syncEditable();
+  window.addEventListener('resize', syncEditable);
+  if (valInput) {
+    valInput.addEventListener('focus', () => { if (!valInput.readOnly) valInput.select(); });
+    valInput.addEventListener('keydown', e => { if (e.key === 'Enter') valInput.blur(); });
+    valInput.addEventListener('blur', () => {
+      if (valInput.readOnly) return;
+      const parsed = parseFloat(valInput.value.replace(',', '.'));
+      consoSet(isNaN(parsed) ? consoValeur() : parsed, true);
+    });
+  }
+}
+consoInit();
+
+// --- Nombre de passagers (partage de frais, 1 à 20) ---
+const PASS_MIN = 1, PASS_MAX = 20;
+function passagersValeur() { return parseInt(document.getElementById('passagers').value, 10) || 1; }
+function passagersSet(v) {
+  v = Math.min(PASS_MAX, Math.max(PASS_MIN, Math.round(v)));
+  document.getElementById('passagers').value = v;
+  const disp = document.getElementById('passagersVal');
+  if (disp) disp.textContent = v;
   resetResultat();
 }
+function passagersInit() {
+  const minusBtn = document.getElementById('passMinus');
+  const plusBtn = document.getElementById('passPlus');
+  if (minusBtn) minusBtn.addEventListener('click', () => passagersSet(passagersValeur() - 1));
+  if (plusBtn) plusBtn.addEventListener('click', () => passagersSet(passagersValeur() + 1));
+}
+passagersInit();
 
 async function fetchPrix(field) {
   const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?select=avg(${field})%20as%20prix&limit=1&where=${field}%20is%20not%20null`;
@@ -653,20 +1190,47 @@ async function chargerPrix() {
 }
 chargerPrix();
 
-function mettreDestinationDansLien(destination) {
-  const params = new URLSearchParams(window.location.search);
-  const valeur = (destination || '').trim();
-
-  if (valeur) {
-    params.set('q', valeur);
-  } else {
-    params.delete('q');
-  }
-
-  const baseUrl = window.location.href.split('?')[0].split('#')[0];
-  const query = params.toString();
-  history.replaceState(null, '', query ? `${baseUrl}?${query}` : baseUrl);
+// Distance à vol d'oiseau (km), pour situer la station la moins chère trouvée.
+function distKm(lat1, lon1, lat2, lon2) {
+  const R = 6371, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
 }
+
+// Station la moins chère à proximité du départ (rayon 8 km), pour le carburant
+// choisi. Best-effort : en cas d'échec (API indisponible, aucune station dans le
+// rayon…), on masque simplement la note, sans bloquer le reste du calcul.
+const STATION_RAYON_KM = 8;
+async function fetchStationMoinsChere(lat, lon, type) {
+  const field = (type === 'sp95') ? 'e10_prix' : CARB_FIELD[type];
+  if (!field) return null;
+  try {
+    // Le tri "sort" de l'API porte sur un champ texte : il n'est pas fiable pour
+    // classer les prix numériquement (ex. "1.9" avant "1.85"). On récupère donc
+    // toutes les stations du rayon et on calcule nous-mêmes le minimum.
+    const url = `https://data.economie.gouv.fr/api/records/1.0/search/?dataset=prix-des-carburants-en-france-flux-instantane-v2&geofilter.distance=${lat},${lon},${STATION_RAYON_KM * 1000}&rows=100`;
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d.records || !d.records.length) return null;
+    let best = null;
+    for (const rec of d.records) {
+      const f = rec.fields || {};
+      const prix = parseFloat(f[field]);
+      if (isNaN(prix) || prix <= 0) continue;
+      const geo = rec.geometry && rec.geometry.coordinates; // [lon, lat]
+      const sLat = geo ? geo[1] : (f.latitude !== undefined ? parseFloat(f.latitude) : null);
+      const sLon = geo ? geo[0] : (f.longitude !== undefined ? parseFloat(f.longitude) : null);
+      // Filtre client en plus du rayon serveur (sécurité si l'API renvoie plus large).
+      if (sLat !== null && sLon !== null && distKm(lat, lon, sLat, sLon) > STATION_RAYON_KM) continue;
+      if (!best || prix < best.prix) best = { prix, nom: f.nom || '', ville: f.ville || '', lat: sLat, lon: sLon };
+    }
+    return best;
+  } catch (e) { return null; }
+}
+
+const DEPART_FIXE = '60 rue de Dantzig, Paris';
 
 // --- Points du trajet (départ, étapes, destination), réordonnables ---
 const pointsEl = () => document.getElementById('points');
@@ -676,15 +1240,20 @@ function makePointRow(value) {
   row.className = 'param-row point-row';
   row.innerHTML =
     '<div class="drag-handle" title="Glisser pour déplacer">⠿</div>' +
-    '<div class="param-icon"></div>' +
     '<div class="param-label"></div>' +
     '<div class="param-input"><div class="autocomplete-wrap">' +
       '<input type="text" class="point-input" autocomplete="off" oninput="onPointInput(this)">' +
       '<div class="autocomplete-list"></div>' +
-    '</div></div>' +
+    '</div>' +
+    '<button type="button" class="fav-star" title="Enregistrer en favori">☆</button></div>' +
     '<button type="button" class="stop-remove" onclick="removePoint(this)" title="Supprimer cette étape">✕</button>';
-  if (value) row.querySelector('input').value = value;
+  const input = row.querySelector('.point-input');
+  if (value) input.value = value;
   row.querySelector('.drag-handle').addEventListener('pointerdown', startDrag);
+  const star = row.querySelector('.fav-star');
+  star.addEventListener('click', () => toggleFavPlace(input.value, star));
+  input.addEventListener('focus', () => showFavoritesIfEmpty(input));
+  syncStarForInput(input);
   return row;
 }
 
@@ -694,28 +1263,28 @@ function refreshPoints() {
   // Poignées de déplacement visibles uniquement quand il y a au moins une étape.
   const showHandles = rows.length > 2;
   rows.forEach((row, i) => {
-    const icon = row.querySelector('.param-icon');
     const label = row.querySelector('.param-label');
     const input = row.querySelector('.point-input');
     const rm = row.querySelector('.stop-remove');
     row.querySelector('.drag-handle').style.display = showHandles ? '' : 'none';
     if (i === 0) {
-      icon.textContent = '🏠'; label.textContent = 'Départ';
-      input.placeholder = 'Ex : votre domicile'; rm.style.display = 'none';
+      label.textContent = 'Départ';
+      input.placeholder = 'Adresse de départ'; rm.style.display = 'none';
+      row.classList.remove('is-stop');
     } else if (i === rows.length - 1) {
-      icon.textContent = '🏁'; label.textContent = 'Destination';
-      input.placeholder = 'Ex : votre lieu de vacances'; rm.style.display = 'none';
+      label.textContent = 'Arrivée';
+      input.placeholder = 'Lieu de vacances'; rm.style.display = 'none';
+      row.classList.remove('is-stop');
     } else {
-      icon.textContent = '📍'; label.textContent = 'Étape ' + i;
-      input.placeholder = 'Arrêt'; rm.style.display = '';
+      // Étape : le numéro passe en placeholder dans l'encadré, ✕ à droite.
+      label.textContent = '';
+      input.placeholder = 'Étape ' + i; rm.style.display = '';
+      row.classList.add('is-stop');
     }
   });
-  // Le bouton d'inversion n'a de sens que sans étape (départ + destination).
-  const showSwap = rows.length === 2;
-  const wrap = document.querySelector('.points-wrap');
+  // Les flèches d'inversion n'ont de sens que sans étape (départ + destination).
   const swap = document.getElementById('swapBtn');
-  if (wrap) wrap.classList.toggle('has-swap', showSwap);
-  if (swap) swap.style.display = showSwap ? 'block' : 'none';
+  if (swap) swap.style.display = (rows.length === 2) ? 'flex' : 'none';
 }
 
 function getPoints() {
@@ -735,17 +1304,11 @@ function removePoint(btn) {
   if (row) row.remove();
   refreshPoints();
   resetResultat();
-  updateLien();
 }
 
 function onPointInput(el) {
   resetResultat();
-  updateLien();
-  if (el) onAutoComplete(el);
-}
-function updateLien() {
-  const pts = getPoints();
-  mettreDestinationDansLien(pts.length ? pts[pts.length - 1] : '');
+  if (el) { onAutoComplete(el); syncStarForInput(el); }
 }
 
 // Échange départ ↔ destination (disponible uniquement sans étape).
@@ -755,15 +1318,18 @@ function swapItinerary() {
   const tmp = inputs[0].value;
   inputs[0].value = inputs[1].value;
   inputs[1].value = tmp;
+  inputs.forEach(syncStarForInput);
   resetResultat();
-  updateLien();
 }
 
 // Glisser-déposer (souris + tactile) via Pointer Events.
 let dragRow = null;
+let dragGrabOffset = 0; // écart vertical entre le doigt et le centre de la ligne au moment de la prise
 function startDrag(e) {
   dragRow = e.target.closest('.point-row');
   if (!dragRow) return;
+  const rect = dragRow.getBoundingClientRect();
+  dragGrabOffset = e.clientY - (rect.top + rect.height / 2);
   dragRow.classList.add('dragging');
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', endDrag, { once: true });
@@ -772,22 +1338,52 @@ function startDrag(e) {
 function onDragMove(e) {
   if (!dragRow) return;
   const container = pointsEl();
+  // On retire le transform pour mesurer la position naturelle et comparer aux voisines.
+  dragRow.style.transform = '';
   const others = Array.from(container.querySelectorAll('.point-row:not(.dragging)'));
   let ref = null;
   for (const r of others) {
     const rect = r.getBoundingClientRect();
     if (e.clientY < rect.top + rect.height / 2) { ref = r; break; }
   }
-  if (ref) container.insertBefore(dragRow, ref);
-  else container.appendChild(dragRow);
-  refreshPoints();
+  // Réordonne dans le DOM quand le doigt franchit le milieu d'une voisine (avec FLIP).
+  if (dragRow.nextElementSibling !== ref) {
+    const before = others.map(r => ({ el: r, top: r.getBoundingClientRect().top }));
+    if (ref) container.insertBefore(dragRow, ref);
+    else container.appendChild(dragRow);
+    refreshPoints();
+    before.forEach(({ el, top }) => {
+      const delta = top - el.getBoundingClientRect().top;
+      if (!delta) return;
+      el.classList.remove('sliding');
+      el.style.transform = `translateY(${delta}px)`;
+      requestAnimationFrame(() => {
+        el.classList.add('sliding');
+        el.style.transform = '';
+      });
+    });
+  }
+  // La ligne attrapée suit exactement le doigt.
+  const rect = dragRow.getBoundingClientRect();
+  const dy = (e.clientY - dragGrabOffset) - (rect.top + rect.height / 2);
+  dragRow.style.transform = `translateY(${dy}px) scale(1.02)`;
 }
 function endDrag() {
-  if (dragRow) dragRow.classList.remove('dragging');
+  const dr = dragRow;
   dragRow = null;
   document.removeEventListener('pointermove', onDragMove);
+  // La ligne se replace en douceur à son emplacement final.
+  if (dr) {
+    dr.style.transition = 'transform 0.15s ease';
+    dr.style.transform = '';
+    setTimeout(() => { dr.classList.remove('dragging'); dr.style.transition = ''; }, 170);
+  }
+  // Nettoie les décalages des voisines.
+  pointsEl().querySelectorAll('.point-row.sliding').forEach(r => {
+    r.classList.remove('sliding');
+    r.style.transform = '';
+  });
   resetResultat();
-  updateLien();
 }
 
 function chargerRechercheDepuisLien() {
@@ -795,9 +1391,12 @@ function chargerRechercheDepuisLien() {
   const q = params.get('q');
   const container = pointsEl();
   container.innerHTML = '';
-  container.appendChild(makePointRow(''));                // départ (vide, placeholder)
-  container.appendChild(makePointRow(q ? q.trim() : '')); // destination
+  container.appendChild(makePointRow(DEPART_FIXE));    // départ
+  container.appendChild(makePointRow(q ? q.trim() : '')); // destination (lien partagé)
   refreshPoints();
+  // On nettoie l'URL : pas de ?q qui persiste après un rafraîchissement.
+  const baseUrl = window.location.href.split('?')[0].split('#')[0];
+  history.replaceState(null, '', baseUrl);
 }
 
 chargerRechercheDepuisLien();
@@ -824,12 +1423,15 @@ async function geocode(lieu, apiKey) {
   // focus.point (Paris = départ) : privilégie le résultat le plus proche pour
   // lever les ambiguïtés de noms (ex. Houdan Yvelines vs Houdan Guadeloupe),
   // sans empêcher les destinations lointaines légitimes.
-  const url = `https://api.openrouteservice.org/geocode/search?api_key=${apiKey}&text=${encodeURIComponent(texteGeo)}&size=1&layers=locality,address,street&focus.point.lon=2.3522&focus.point.lat=48.8566`;
+  const url = `https://api.openrouteservice.org/geocode/search?api_key=${apiKey}&text=${encodeURIComponent(texteGeo)}&size=5&layers=locality,address,street&focus.point.lon=2.3522&focus.point.lat=48.8566`;
   const r = await fetch(url);
   if (!r.ok) throw new Error('Géocodage impossible pour "' + lieu + '"');
   const d = await r.json();
   if (!d.features || d.features.length === 0) throw new Error('Adresse introuvable : "' + lieu + '"');
-  return d.features[0].geometry.coordinates;
+  const europeens = d.features.filter(isEurope);
+  if (!europeens.length) throw new Error('Adresse introuvable en Europe : "' + lieu + '"');
+  // France d'abord (sans exclure le reste de l'Europe si aucun résultat français).
+  return frenchFirst(europeens)[0].geometry.coordinates;
 }
 
 async function getRoute(coords, apiKey) {
@@ -875,7 +1477,6 @@ async function calculer() {
   if (isNaN(conso) || conso <= 0) return showError('⚠️ Consommation invalide.');
   if (!prixActuel) return showError('⚠️ Le prix du carburant n\'a pas pu être chargé. Vérifie ta connexion.');
 
-  mettreDestinationDansLien(arrivee);
   setLoading(true);
   document.getElementById('sectionResultats').style.display = 'none';
 
@@ -888,6 +1489,30 @@ async function calculer() {
     const distA   = route.distanceKm;
     const litresA = (distA * conso) / 100;
     const coutA   = litresA * prixActuel;
+    const fmtEuro = n => n.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+
+    // Le total ne compte que le carburant (le calcul du coût des péages a été retiré).
+    const totalAFinal  = coutA;
+    const totalARFinal = coutA * 2;
+    const rTotalA  = document.getElementById('r-total-a');
+    const rTotalAR = document.getElementById('r-total-ar');
+    rTotalA.textContent  = fmtEuro(totalAFinal);
+    rTotalAR.textContent = fmtEuro(totalARFinal);
+
+    // Partage de frais entre passagers : sous-ligne discrète dans la cellule du total.
+    const passagers = passagersValeur();
+    rTotalA.classList.toggle('has-per-person', passagers > 1);
+    rTotalAR.classList.toggle('has-per-person', passagers > 1);
+    if (passagers > 1) {
+      const noteA = document.createElement('div');
+      noteA.className = 'per-person-note';
+      noteA.textContent = fmtEuro(totalAFinal / passagers) + ' / pers.';
+      rTotalA.appendChild(noteA);
+      const noteAR = document.createElement('div');
+      noteAR.className = 'per-person-note';
+      noteAR.textContent = fmtEuro(totalARFinal / passagers) + ' / pers.';
+      rTotalAR.appendChild(noteAR);
+    }
 
     const fmtKm = n => Math.round(n).toLocaleString('fr-FR') + ' km';
     document.getElementById('r-dist-a').textContent    = fmtKm(distA);
@@ -901,14 +1526,73 @@ async function calculer() {
     document.getElementById('r-litres-a').textContent  = fmtL(litresA);
     document.getElementById('r-litres-ar').textContent = fmtL(litresA * 2);
 
-    // Itinéraire Maps : inclut les étapes via le format /maps/dir/A/B/C.
-    const mapsPath = lieux.map(l => encodeURIComponent(l)).join('/');
-    document.getElementById('mapsLink').href =
-      `https://www.google.com/maps/dir/${mapsPath}`;
+    // Itinéraire Maps : force le mode voiture (travelmode=driving) + étapes.
+    const origin = encodeURIComponent(lieux[0]);
+    const destination = encodeURIComponent(lieux[lieux.length - 1]);
+    const waypoints = lieux.slice(1, -1).map(l => encodeURIComponent(l)).join('|');
+    let mapsUrl = `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${origin}&destination=${destination}`;
+    if (waypoints) mapsUrl += `&waypoints=${waypoints}`;
+    document.getElementById('mapsLink').href = mapsUrl;
     const startObj = JSON.stringify({place: depart, lat: c1[1], lng: c1[0]});
     const endObj = JSON.stringify({place: arrivee, lat: c2[1], lng: c2[0]});
-    document.getElementById('vinciLink').href =
-      `https://www.vinci-autoroutes.com/fr/mon-trajet/?area=service&filter-status=0&start=${encodeURIComponent(startObj)}&end=${encodeURIComponent(endObj)}`;
+    const vinciLink = document.getElementById('vinciLink');
+    // Le calculateur de péages Vinci ne gère qu'un trajet direct départ→arrivée :
+    // on masque le bouton dès qu'il y a au moins une étape intermédiaire.
+    if (lieux.length > 2) {
+      vinciLink.style.display = 'none';
+    } else {
+      vinciLink.style.display = '';
+      vinciLink.href =
+        `https://www.vinci-autoroutes.com/fr/mon-trajet/?area=service&filter-status=0&start=${encodeURIComponent(startObj)}&end=${encodeURIComponent(endObj)}`;
+    }
+
+    // Station la moins chère à proximité du départ (best-effort, ne bloque rien).
+    const carburantType = document.getElementById('carburant').value;
+    const cheapestNote = document.getElementById('cheapestNote');
+    const station = await fetchStationMoinsChere(c1[1], c1[0], carburantType);
+    if (station) {
+      cheapestNote.textContent = '';
+
+const header = document.createElement('div');
+header.className = 'cheapest-header';
+const icon = document.createElement('span');
+icon.className = 'cheapest-icon';
+icon.textContent = '🐀';
+header.appendChild(icon);
+const title = document.createElement('span');
+title.className = 'cheapest-title';
+title.style.fontSize = '0.9em';
+title.textContent = 'Station la moins chère près du départ';
+header.appendChild(title);
+
+cheapestNote.appendChild(header);
+
+      const detail = document.createElement('div');
+      detail.className = 'cheapest-detail';
+      const strong = document.createElement('strong');
+      strong.textContent = station.prix.toFixed(3) + ' €/L';
+      detail.appendChild(strong);
+      const lieu = [station.nom, station.ville].filter(Boolean).join(', ');
+      if (lieu) detail.appendChild(document.createTextNode(' à ' + lieu));
+      if (station.lat !== null && station.lon !== null) {
+        const dKm = distKm(c1[1], c1[0], station.lat, station.lon);
+        if (isFinite(dKm)) detail.appendChild(document.createTextNode(' (' + dKm.toFixed(1) + ' km)'));
+      }
+      cheapestNote.appendChild(detail);
+
+      if (station.lat !== null && station.lon !== null) {
+        const link = document.createElement('a');
+        link.className = 'cheapest-link';
+        link.href = `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${station.lat},${station.lon}`;
+        link.target = '_blank';
+        link.textContent = 'Itinéraire vers cette station →';
+        cheapestNote.appendChild(link);
+      }
+
+      cheapestNote.style.display = 'block';
+    } else {
+      cheapestNote.style.display = 'none';
+    }
 
     document.getElementById('sectionResultats').style.display = 'block';
     document.getElementById('sectionResultats').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -923,3 +1607,5 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter') calculer(); }
 </script>
 </body>
 </html>
+
+
